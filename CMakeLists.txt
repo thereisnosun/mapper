@@ -1,13 +1,10 @@
 cmake_minimum_required(VERSION 2.8.9)
 set (CMAKE_CXX_STANDARD 11)
 project(mapper)
-include_directories("3rd-party/libdwarf/libdwarf/")
+include_directories(3rd-party/libdwarf/libdwarf/ ../3rd-party/libdwarf/libdwarf/)
 add_executable(mapper src/mapper.cpp src/main.cpp)
-target_link_libraries(mapper libdwarf.a)
-target_link_libraries(mapper libelf.so.1)
-target_link_libraries(mapper z)
 find_library(BOOST_PROGRAM_OPT libboost_program_options.a HINTS /usr/lib/x86_64-linux-gnu/)
-target_link_libraries(mapper PUBLIC ${BOOST_PROGRAM_OPT})
+target_link_libraries(mapper libdwarf.a libelf.so.1 z ${BOOST_PROGRAM_OPT})
 
 
 
