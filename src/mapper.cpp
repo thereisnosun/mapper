@@ -16,6 +16,8 @@
 #include <dwarf.h>
 #include <libdwarf.h>
 
+#include <iostream>
+#include "mapper.h"
 
 void die(char* fmt, ...)
 {
@@ -42,21 +44,22 @@ Dwarf_Die find_symbol_in_die(Dwarf_Debug dgb, Dwarf_Die the_die, char* sym){
     else if (rc == DW_DLV_NO_ENTRY)
         return 0;
 
+//	std::cout << "Die name is - " << die_name << std::endl;
     if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK)
         die("Error in dwarf_tag\n");
 
     /* Only interested in subprogram DIEs here */
     if (tag != DW_TAG_subprogram)
-        printf("We ony want functions for now!\n");
+//        printf("We ony want functions for now!\n");
         return 0;
 
     if (dwarf_get_TAG_name(tag, &tag_name) != DW_DLV_OK)
         die("Error in dwarf_get_TAG_name\n");
 
-    if (!strcmp(die_name, sym)){
+//    if (!strcmp(die_name, sym)){
         printf("Found DW_TAG_subprogram: '%s'\n", die_name);
         return the_die;
-    }
+ //   }
     return 0;
 }
 
@@ -125,11 +128,11 @@ void list_sym_in_file(Dwarf_Debug dbg, char *sym)
         int rc;
 
         symbol_die = find_symbol_in_die(dbg, child_die, sym);
-        if (symbol_die){
+       /* if (symbol_die){
             sym_addr = get_symbol_addr(dbg, symbol_die);
             printf("Symbol address is : 0x%08llx\n", sym_addr);
             found = 1;
-        }
+        }*/
 
         rc = dwarf_siblingof(dbg, child_die, &child_die, &err);
 
@@ -145,30 +148,27 @@ void list_sym_in_file(Dwarf_Debug dbg, char *sym)
 }
 
 
-int mainForMapper(int argc, char* argv[])
+int mainForMapper(int argc, const char* progname)
 {
     Dwarf_Debug dbg = 0;
     Dwarf_Error err;
-    const char* progname;
+//    const char* progname;
     int fd = -1;
 
-    if (argc < 2) {
-        fprintf(stderr, "Expected a program name as argument\n");
-        return 1;
-    }
-
-    progname = argv[1];
     if ((fd = open(progname, O_RDONLY)) < 0) {
         perror("open");
         return 1;
     }
 
-    if (dwarf_init(fd, DW_DLC_READ, 0, 0, &dbg, &err) != DW_DLV_OK) {
+	auto ret = dwarf_init(fd, DW_DLC_READ, 0, 0, &dbg, &err); 
+    if (ret != DW_DLV_OK) {
         fprintf(stderr, "Failed DWARF initialization\n");
+		std::cout << "Failed DWARF initialization, ret - " << ret << " error - " << dwarf_errmsg(err) << std::endl;
         return 1;
+
     }
 
-    list_sym_in_file(dbg, argv[2]);
+    list_sym_in_file(dbg, "");
 
     if (dwarf_finish(dbg, &err) != DW_DLV_OK) {
         fprintf(stderr, "Failed DWARF finalization\n");

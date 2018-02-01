@@ -3,6 +3,8 @@
 #include <boost/program_options.hpp>
 #include <sys/stat.h>
 
+#include "mapper.h"
+
 constexpr static char szVERSION[] = "1.0";
 constexpr static size_t MAX_FILESIZE = 20 * 1024 * 1024;
 namespace bpo = boost::program_options;	
@@ -68,6 +70,7 @@ int main(int argc, char *argv[])
 			std::cout << "Error! File " << appName << " is bigger then 20Mb\n";
 			return 1;
 		}
+		return mainForMapper(argc, appName.c_str());
     }
 	else if (vm.count("help"))
 	{
