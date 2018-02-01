@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
 	    if (vm.count("app"))
 	    {
-			std::cout << "App name is : " << vm["app"].as<std::string>() << std::endl;
+			std::cout << "Will analyze " << vm["app"].as<std::string>() << " applciation" << std::endl;
 			std::string appName = vm["app"].as<std::string>();
 			if (!checkIfFileOk(appName))
 				return 1;
@@ -101,7 +101,7 @@ bool checkIfFileOk(const std::string& appName)
 		return false;
 	}
 	return true;
-#else _WIN32
+#elif _WIN32
 	return true;
 #endif
 }

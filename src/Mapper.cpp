@@ -34,7 +34,7 @@ private:
     std::string m_fileName;
 };
 
-#ifdef __linux_
+#ifdef __linux__
 bool Mapper::MapperImpl::analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVector& funcVector) const
 {
     char* die_name = 0;
@@ -58,7 +58,6 @@ bool Mapper::MapperImpl::analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVecto
 
     if (tag == DW_TAG_subprogram)
     {
-//        std::cout << "Found function - " << die_name << "\n";
         funcVector.emplace_back(die_name);
     }
 
