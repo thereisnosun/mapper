@@ -9,7 +9,7 @@ public:
  	Mapper(std::string&& fileName);
 	~Mapper();
  	bool collectFunctions();
- 	void print() const; //if filename is passed(save to filename)
+ 	void print(std::string&& fileToSave = "") const; //if filename is passed(save to filename)
 
 private:
 	class MapperImpl;

@@ -23,7 +23,8 @@ int main(int argc, char *argv[])
     desc.add_options()
       ("help,h", "Help screen")
       ("version", "Print version")
-      ("app", bpo::value<std::string>(), "Path to executable you want to examine(must be built in DEBUG mode)");
+      ("app", bpo::value<std::string>(), "Path to executable you want to examine(must be built in DEBUG mode)")
+      ("out", bpo::value<std::string>(), "Output file for results(optional)");
 
 
     if (argc <= 1)
@@ -44,10 +45,13 @@ int main(int argc, char *argv[])
 			std::string appName = vm["app"].as<std::string>();
 			if (!checkIfFileOk(appName))
 				return 1;
-
+			
+			std::string fileToSave;
+			if (vm.count("out"))
+				fileToSave = vm["out"].as<std::string>();
 			Mapper mapper{std::move(appName)};
 			mapper.collectFunctions();
-			mapper.print();
+			mapper.print(std::move(fileToSave));
 	    }
 		else if (vm.count("help"))
 		{
