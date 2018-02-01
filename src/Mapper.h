@@ -5,14 +5,9 @@
  class Mapper
  {
  	typedef std::vector<std::string> StrVector;
- 	class MapperImpl;
- 
- public:
- 	Mapper(std::string&& fileName):
- 	m_impl(new MapperImpl(std::move(filename)))
- 	{
-
- 	}
+public:
+ 	Mapper(std::string&& fileName);
+	~Mapper();
  	bool collectFunctions();
  	void print() const; //if filename is passed(save to filename)
 

@@ -34,11 +34,11 @@ int main(int argc, char *argv[])
     if (vm.count("app"))
     {
 		std::cout << "App name is : " << vm["app"].as<std::string>() << std::endl;
-		auto appName = vm["app"].as<std::string>();
+		std::string appName = vm["app"].as<std::string>();
 		if (!checkIfFileOk(appName))
 			return 1;
 
-		Mapper mapper{appName};
+		Mapper mapper{std::move(appName)};
 		mapper.collectFunctions();
 		mapper.print();
     }
@@ -65,10 +65,10 @@ void printHelp(const bpo::options_description& helpDesc)
 	std::cout << helpDesc << std::endl;
 }
 
-bool checkIfFileOk(const std::string& appPath)
+bool checkIfFileOk(const std::string& appName)
 {
 	struct stat st;
-	if (stat(appPath.c_str(), &st) != 0)
+	if (stat(appName.c_str(), &st) != 0)
 	{
 		std::cout << "Error! Cannot acces " << appName << " file\n";
 		return false;
