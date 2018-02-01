@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.9)
 set (CMAKE_CXX_STANDARD 11)
 project(mapper)
-include_directories("3rd-party/libdwarf/libdwarf/")
+include_directories("../3rd-party/libdwarf/libdwarf/")
 add_executable(mapper src/mapper.cpp src/main.cpp)
 target_link_libraries(mapper libdwarf.a)
 target_link_libraries(mapper libelf.so.1)
