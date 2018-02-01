@@ -1,7 +1,12 @@
 #include <iostream>
 #include <string>
 #include <boost/program_options.hpp>
+
+#ifdef __linux__
 #include <sys/stat.h>
+#elif _WIN32
+    // windows code goes here
+#endif
 
 #include "Mapper.h"
 
@@ -27,34 +32,43 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-    bpo::variables_map vm;
-    bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
-	bpo::notify(vm);
-
-    if (vm.count("app"))
-    {
-		std::cout << "App name is : " << vm["app"].as<std::string>() << std::endl;
-		std::string appName = vm["app"].as<std::string>();
-		if (!checkIfFileOk(appName))
-			return 1;
-
-		Mapper mapper{std::move(appName)};
-		mapper.collectFunctions();
-		mapper.print();
-    }
-	else if (vm.count("help"))
+	try
 	{
-		printHelp(desc);
+		bpo::variables_map vm;
+	    bpo::store(bpo::parse_command_line(argc, argv, desc), vm);
+		bpo::notify(vm);
+
+	    if (vm.count("app"))
+	    {
+			std::cout << "App name is : " << vm["app"].as<std::string>() << std::endl;
+			std::string appName = vm["app"].as<std::string>();
+			if (!checkIfFileOk(appName))
+				return 1;
+
+			Mapper mapper{std::move(appName)};
+			mapper.collectFunctions();
+			mapper.print();
+	    }
+		else if (vm.count("help"))
+		{
+			printHelp(desc);
+		}
+		else if (vm.count("version"))
+		{
+			std::cout << szVERSION << std::endl;
+		}
+	    else
+	    {
+	    	printHelp(desc);
+	    	return 1;
+	    }
 	}
-	else if (vm.count("version"))
+	catch(const std::exception& e)
 	{
-		std::cout << szVERSION << std::endl;
+		std::cout << e.what() << std::endl;
+		return 1;
 	}
-    else
-    {
-    	printHelp(desc);
-    	return 1;
-    }
+
 
 
 	return 0;
@@ -67,6 +81,7 @@ void printHelp(const bpo::options_description& helpDesc)
 
 bool checkIfFileOk(const std::string& appName)
 {
+#ifdef __linux__
 	struct stat st;
 	if (stat(appName.c_str(), &st) != 0)
 	{
@@ -86,4 +101,7 @@ bool checkIfFileOk(const std::string& appName)
 		return false;
 	}
 	return true;
+#else _WIN32
+	return true;
+#endif
 }

@@ -34,6 +34,7 @@ private:
     std::string m_fileName;
 };
 
+#ifdef __linux_
 bool Mapper::MapperImpl::analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVector& funcVector) const
 {
     char* die_name = 0;
@@ -46,7 +47,7 @@ bool Mapper::MapperImpl::analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVecto
         return false;
     }
     else if (rc == DW_DLV_NO_ENTRY)
-        return false;
+        return true;
 
     Dwarf_Half tag;
     if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK)
@@ -57,15 +58,13 @@ bool Mapper::MapperImpl::analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVecto
 
     if (tag == DW_TAG_subprogram)
     {
-        /*if (dwarf_get_TAG_name(tag, &tag_name) != DW_DLV_OK)
-            die("Error in dwarf_get_TAG_name\n");*/
-        std::cout << "Found function - " << die_name << "\n";
+//        std::cout << "Found function - " << die_name << "\n";
         funcVector.emplace_back(die_name);
     }
 
     return true;
 }
-
+#endif
 
 Mapper::StrVector Mapper::MapperImpl::collectFunctions() const
 {
@@ -158,7 +157,9 @@ void Mapper::print() const
 {
     if (!m_collectedFunctions.empty())
     {
-
+        std::cout << m_collectedFunctions.size() << " functions collected: \n";
+        for (const auto& func: m_collectedFunctions)
+            std::cout << func << std::endl;
     }
     else
     {
