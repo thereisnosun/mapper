@@ -10,7 +10,7 @@
 
 #include "Mapper.h"
 
-constexpr static char szVERSION[] = "1.0";
+constexpr static char szVERSION[] = "1.0.12";
 constexpr static size_t MAX_FILESIZE = 20 * 1024 * 1024;
 namespace bpo = boost::program_options;	
 

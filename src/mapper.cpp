@@ -14,6 +14,7 @@
 #endif
 
 #include <iostream>
+#include <fstream>
 
 
 const int APPROX_ELEMENTS = 512;
@@ -34,7 +35,7 @@ private:
     std::string m_fileName;
 };
 
-#ifdef __linux_
+#ifdef __linux__
 bool Mapper::MapperImpl::analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVector& funcVector) const
 {
     char* die_name = 0;
@@ -58,7 +59,6 @@ bool Mapper::MapperImpl::analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVecto
 
     if (tag == DW_TAG_subprogram)
     {
-//        std::cout << "Found function - " << die_name << "\n";
         funcVector.emplace_back(die_name);
     }
 
@@ -153,13 +153,34 @@ bool Mapper::collectFunctions()
     return !m_collectedFunctions.empty();
 }
 
-void Mapper::print() const
+void Mapper::print(std::string&& fileToSave) const
 {
     if (!m_collectedFunctions.empty())
     {
-        std::cout << m_collectedFunctions.size() << " functions collected: \n";
-        for (const auto& func: m_collectedFunctions)
-            std::cout << func << std::endl;
+		if (fileToSave.empty())
+		{
+		    std::cout << m_collectedFunctions.size() << " functions collected: \n";
+		    for (const auto& func: m_collectedFunctions)
+		        std::cout << func << std::endl;
+		}
+		else
+		{
+			std::ofstream outputFile(fileToSave);
+      		if (outputFile)
+			{
+				outputFile << m_collectedFunctions.size() << " functions collected: \n";
+				for (const auto& func: m_collectedFunctions)
+					outputFile << func << std::endl;
+				std::cout << "Output successfully written to " << fileToSave << " file\n";
+			}		
+			else
+			{
+				std::cout << "Failed to open the " << fileToSave << " file. Will print to console\n";
+				std::cout << m_collectedFunctions.size() << " functions collected: \n";
+		    	for (const auto& func: m_collectedFunctions)
+		        	std::cout << func << std::endl;	
+			}
+		}
     }
     else
     {
