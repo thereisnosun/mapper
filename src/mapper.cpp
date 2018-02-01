@@ -1,99 +1,91 @@
-/* 
- * Get address from symbol (libdwarf version)
- * Based on code by : Eli Bendersky (http://eli.thegreenplace.net) 
- *
- */
+#include "Mapper.h"
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <dwarf.h>
-#include <libdwarf.h>
+#ifdef __linux__ 
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+    #include <fcntl.h>
+    #include <dwarf.h>
+    #include <libdwarf.h>
+#elif _WIN32
+    // windows code goes here
+#else
+    //unsupported platform
+#endif
 
 #include <iostream>
-#include "mapper.h"
 
-void die(char* fmt, ...)
+
+const int APPROX_ELEMENTS = 512;
+
+class Mapper::MapperImpl
 {
-    va_list args;
+public:
+    MapperImpl(std::string&& fileName):
+    m_fileName(std::move(fileName));
 
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
+    StrVector collectFunctions() const;
+private:
+#ifdef __linux__ 
+    bool analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVector& funcVector) const;
+#endif
+    std::string m_fileName;
+};
 
-    exit(EXIT_FAILURE);
-}
-
-/* Find symbols from the DIE and check if its the one we want */
-Dwarf_Die find_symbol_in_die(Dwarf_Debug dgb, Dwarf_Die the_die, char* sym){
-
+bool Mapper::MapperImpl::analyzeDie(Dwarf_Debug dgb, Dwarf_Die the_die, StrVector& funcVector) const
+{
     char* die_name = 0;
-    const char* tag_name = 0;
     Dwarf_Error err;
-    Dwarf_Half tag;
     int rc = dwarf_diename(the_die, &die_name, &err);
 
     if (rc == DW_DLV_ERROR)
-        die("Error in dwarf_diename\n");
+    {
+        std::cout << "Error reading DWARF_diename - " << dwarf_errmsg(err) << std::endl;
+        return false;
+    }
     else if (rc == DW_DLV_NO_ENTRY)
-        return 0;
+        return false;
 
-//	std::cout << "Die name is - " << die_name << std::endl;
+    Dwarf_Half tag;
     if (dwarf_tag(the_die, &tag, &err) != DW_DLV_OK)
-        die("Error in dwarf_tag\n");
-
-    /* Only interested in subprogram DIEs here */
-    if (tag != DW_TAG_subprogram)
-//        printf("We ony want functions for now!\n");
-        return 0;
-
-    if (dwarf_get_TAG_name(tag, &tag_name) != DW_DLV_OK)
-        die("Error in dwarf_get_TAG_name\n");
-
-//    if (!strcmp(die_name, sym)){
-        printf("Found DW_TAG_subprogram: '%s'\n", die_name);
-        return the_die;
- //   }
-    return 0;
-}
-
-/* Get the addr of the symbol we want */
-unsigned int get_symbol_addr(Dwarf_Debug dgb, Dwarf_Die the_die)
-{
-    Dwarf_Error err;
-    Dwarf_Attribute* attrs;
-    Dwarf_Addr lowpc, highpc;
-    Dwarf_Signed attrcount, i;
-
-    if (dwarf_attrlist(the_die, &attrs, &attrcount, &err) != DW_DLV_OK)
-        die("Error in dwarf_attlist\n");
-
-    for (i = 0; i < attrcount; ++i) {
-        Dwarf_Half attrcode;
-        if (dwarf_whatattr(attrs[i], &attrcode, &err) != DW_DLV_OK)
-            die("Error in dwarf_whatattr\n");
-
-        /* Take lowpc (function entry) */
-        if (attrcode == DW_AT_low_pc)
-            dwarf_formaddr(attrs[i], &lowpc, 0);
-        /* Take highpc just for fun!*/
-        else if (attrcode == DW_AT_high_pc)
-            dwarf_formaddr(attrs[i], &highpc, 0);
+    {
+        std::cout << "Error reading dwarf_tag - " << dwarf_errmsg(err) << std::endl;
+        return false;
     }
 
-    return lowpc;
+    if (tag == DW_TAG_subprogram)
+    {
+        /*if (dwarf_get_TAG_name(tag, &tag_name) != DW_DLV_OK)
+            die("Error in dwarf_get_TAG_name\n");*/
+        printf("Found DW_TAG_subprogram: '%s'\n", die_name);
+        std::cout << "Found function - " << die_name << std::end;
+        funcVector.emplace_back(die_name);
+    }
+
+    return true;
 }
 
 
-/* List all the functions from the file represented by the given descriptor. */
-void list_sym_in_file(Dwarf_Debug dbg, char *sym)
+StrVector Mapper::MapperImpl collectFunctions() const
 {
+    StrVector collectedFunc;
+#ifdef __linux__ 
+    int fd = open(progname, O_RDONLY);
+    if (fd < 0) 
+    {
+        std::cout << "Failed to open file. Error is - " << errno << std::endl;
+        return collectedFunc;
+    }   
+
+    Dwarf_Debug dbg = 0;
+    Dwarf_Error err;
+    auto ret = dwarf_init(fd, DW_DLC_READ, 0, 0, &dbg, &err); 
+    if (ret != DW_DLV_OK) 
+    {
+        std::cout << "Failed DWARF initialization, return code - " << ret << " error - " << dwarf_errmsg(err) << std::endl;
+        return collectedFunc;
+    }
+
     Dwarf_Unsigned cu_header_length, abbrev_offset, next_cu_header;
     Dwarf_Half version_stamp, address_size;
     Dwarf_Error err;
@@ -108,73 +100,62 @@ void list_sym_in_file(Dwarf_Debug dbg, char *sym)
                 &address_size,
                 &next_cu_header,
                 &err) == DW_DLV_ERROR)
-        die("Error reading DWARF cu header\n");
+    {
+        std::cout << "Error reading DWARF cu header - " << dwarf_errmsg(err) << std::endl;
+        return collectedFunc;
+    }
 
     /* Expect the CU to have a single sibling - a DIE */
     if (dwarf_siblingof(dbg, no_die, &cu_die, &err) == DW_DLV_ERROR)
-        die("Error getting sibling of CU\n");
+    {
+        std::cout << "Error getting sibling of CU - " << dwarf_errmsg(err) << std::endl;
+        return collectedFunc;
+    }
 
     /* Expect the CU DIE to have children */
     if (dwarf_child(cu_die, &child_die, &err) == DW_DLV_ERROR)
-        die("Error getting child of CU DIE\n");
+    {
+        std::cout << "Error getting child of CU DIE - " << dwarf_errmsg(err) << std::endl;
+        return collectedFunc;
+    }
 
+    collectedFunc.reserve(APPROX_ELEMENTS);
+    while (true)
+    {
+        if (!analyzeDie(dbg, child_die, collectedFunc))
+            break;
 
-    Dwarf_Die symbol_die;
-    Dwarf_Addr sym_addr;
-    unsigned int found = 0; /* we set this flag to check if we got the sym */ 
-
-    /* Now go over all children DIEs */
-    while (1) {
-        int rc;
-
-        symbol_die = find_symbol_in_die(dbg, child_die, sym);
-       /* if (symbol_die){
-            sym_addr = get_symbol_addr(dbg, symbol_die);
-            printf("Symbol address is : 0x%08llx\n", sym_addr);
-            found = 1;
-        }*/
-
-        rc = dwarf_siblingof(dbg, child_die, &child_die, &err);
+        int rc = dwarf_siblingof(dbg, child_die, &child_die, &err);
 
         if (rc == DW_DLV_ERROR)
-            die("Error getting sibling of DIE\n");
+        {
+            std::cout << "Error getting sibling of DIE - " << dwarf_errmsg(err) << std::endl;
+            break;
+        }
         else if (rc == DW_DLV_NO_ENTRY)
             break; /* done */
     }
-    if (!found){
-        printf("Symbol not found!\n");
-        exit(EXIT_FAILURE);
-    }
+
+#endif
+
+    return collectedFunc;
 }
 
 
-int mainForMapper(int argc, const char* progname)
+bool Mapper::collectFunctions()
 {
-    Dwarf_Debug dbg = 0;
-    Dwarf_Error err;
-//    const char* progname;
-    int fd = -1;
+    m_collectedFunctions = m_impl->collectFunctions();
+    return !m_collectedFunctions.empty();
+}
 
-    if ((fd = open(progname, O_RDONLY)) < 0) {
-        perror("open");
-        return 1;
-    }
-
-	auto ret = dwarf_init(fd, DW_DLC_READ, 0, 0, &dbg, &err); 
-    if (ret != DW_DLV_OK) {
-        fprintf(stderr, "Failed DWARF initialization\n");
-		std::cout << "Failed DWARF initialization, ret - " << ret << " error - " << dwarf_errmsg(err) << std::endl;
-        return 1;
+void Mapper::print() const
+{
+    if (!m_collectedFunctions.empty())
+    {
 
     }
-
-    list_sym_in_file(dbg, "");
-
-    if (dwarf_finish(dbg, &err) != DW_DLV_OK) {
-        fprintf(stderr, "Failed DWARF finalization\n");
-        return 1;
+    else
+    {
+        std::cout << "No functions collected\n";
     }
-
-    close(fd);
-    return 0;
 }

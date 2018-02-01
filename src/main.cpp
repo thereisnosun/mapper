@@ -3,46 +3,22 @@
 #include <boost/program_options.hpp>
 #include <sys/stat.h>
 
-#include "mapper.h"
+#include "Mapper.h"
 
 constexpr static char szVERSION[] = "1.0";
 constexpr static size_t MAX_FILESIZE = 20 * 1024 * 1024;
 namespace bpo = boost::program_options;	
 
-void printHelp(const bpo::options_description& helpDesc)
-{
-	std::cout << helpDesc << std::endl;
-}
-
-
-//TODO: create for these checks object validator
-bool checkIfExecutable(const std::string& appPath)
-{
-	struct stat sb;
-	return (stat(appPath.c_str(), &sb) == 0 && sb.st_mode & S_IXUSR);
-}
-
-bool checkFileSize(const std::string& appPath)
-{
-	struct stat st;
-	stat(appPath.c_str(), &st);
-	return st.st_size < MAX_FILESIZE;
-}
+void printHelp(const bpo::options_description& helpDesc);
+bool checkIfFileOk(const std::string& appPath);
 
 int main(int argc, char *argv[])
 {
-	//TODO:
-
-	/*1. Check if executable
-	2. Check if size > 20M.
-	3. Check if DEBUG.
-	*/
-	
 	bpo::options_description desc{"Options"};
     desc.add_options()
       ("help,h", "Help screen")
       ("version", "Print version")
-      ("app", bpo::value<std::string>(), "Path to executable you want to examine");
+      ("app", bpo::value<std::string>(), "Path to executable you want to examine(must be built in DEBUG mode)");
 
 
     if (argc <= 1)
@@ -59,18 +35,12 @@ int main(int argc, char *argv[])
     {
 		std::cout << "App name is : " << vm["app"].as<std::string>() << std::endl;
 		auto appName = vm["app"].as<std::string>();
-		if (!checkIfExecutable(appName))
-		{
-			std::cout << "Error! File " << appName << " is not executable\n";
+		if (!checkIfFileOk(appName))
 			return 1;
-		}
 
-		if (!checkFileSize(appName))
-		{
-			std::cout << "Error! File " << appName << " is bigger then 20Mb\n";
-			return 1;
-		}
-		return mainForMapper(argc, appName.c_str());
+		Mapper mapper{appName};
+		mapper.collectFunctions();
+		mapper.print();
     }
 	else if (vm.count("help"))
 	{
@@ -90,3 +60,30 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+void printHelp(const bpo::options_description& helpDesc)
+{
+	std::cout << helpDesc << std::endl;
+}
+
+bool checkIfFileOk(const std::string& appPath)
+{
+	struct stat st;
+	if (stat(appPath.c_str(), &st) != 0)
+	{
+		std::cout << "Error! Cannot acces " << appName << " file\n";
+		return false;
+	}
+
+	if (!(st.st_mode & S_IXUSR))
+	{
+		std::cout << "Error! File " << appName << " is not executable\n";
+		return false;
+	}
+
+	if (st.st_size >= MAX_FILESIZE)
+	{
+		std::cout << "Error! File " << appName << " is bigger then 20Mb\n";
+		return false;
+	}
+	return true;
+}
