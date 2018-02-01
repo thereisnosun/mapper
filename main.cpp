@@ -1,13 +1,30 @@
 #include <iostream>
 #include <string>
 #include <boost/program_options.hpp>
+#include <sys/stat.h>
 
 constexpr static char szVERSION[] = "1.0";
+constexpr static size_t MAX_FILESIZE = 20 * 1024 * 1024;
 namespace bpo = boost::program_options;	
 
 void printHelp(const bpo::options_description& helpDesc)
 {
 	std::cout << helpDesc << std::endl;
+}
+
+
+//TODO: create for these checks object validator
+bool checkIfExecutable(const std::string& appPath)
+{
+	struct stat sb;
+	return (stat(appPath.c_str(), &sb) == 0 && sb.st_mode & S_IXUSR);
+}
+
+bool checkFileSize(const std::string& appPath)
+{
+	struct stat st;
+	stat(appPath.c_str(), &st);
+	return st.st_size < MAX_FILESIZE;
 }
 
 int main(int argc, char *argv[])
@@ -23,7 +40,7 @@ int main(int argc, char *argv[])
     desc.add_options()
       ("help,h", "Help screen")
       ("version", "Print version")
-      ("app", bpo::value<std::string>(), "app");
+      ("app", bpo::value<std::string>(), "Path to executable you want to examine");
 
 
     if (argc <= 1)
@@ -39,6 +56,18 @@ int main(int argc, char *argv[])
     if (vm.count("app"))
     {
 		std::cout << "App name is : " << vm["app"].as<std::string>() << std::endl;
+		auto appName = vm["app"].as<std::string>();
+		if (!checkIfExecutable(appName))
+		{
+			std::cout << "Error! File " << appName << " is not executable\n";
+			return 1;
+		}
+
+		if (!checkFileSize(appName))
+		{
+			std::cout << "Error! File " << appName << " is bigger then 20Mb\n";
+			return 1;
+		}
     }
 	else if (vm.count("help"))
 	{
