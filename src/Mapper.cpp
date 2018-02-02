@@ -159,26 +159,20 @@ void Mapper::print(std::string&& fileToSave) const
     {
 		if (fileToSave.empty())
 		{
-		    std::cout << m_collectedFunctions.size() << " functions collected: \n";
-		    for (const auto& func: m_collectedFunctions)
-		        std::cout << func << std::endl;
+            printToStream(std::cout);
 		}
 		else
 		{
 			std::ofstream outputFile(fileToSave);
       		if (outputFile)
 			{
-				outputFile << m_collectedFunctions.size() << " functions collected: \n";
-				for (const auto& func: m_collectedFunctions)
-					outputFile << func << std::endl;
-				std::cout << "Output successfully written to " << fileToSave << " file\n";
+				printToStream(outputFile);
+                std::cout << "Output successfully written to " << fileToSave << " file\n";
 			}		
 			else
 			{
 				std::cout << "Failed to open the " << fileToSave << " file. Will print to console\n";
-				std::cout << m_collectedFunctions.size() << " functions collected: \n";
-		    	for (const auto& func: m_collectedFunctions)
-		        	std::cout << func << std::endl;	
+                printToStream(std::cout);
 			}
 		}
     }
@@ -187,3 +181,11 @@ void Mapper::print(std::string&& fileToSave) const
         std::cout << "No functions collected\n";
     }
 }
+
+void Mapper::printToStream(std::ostream& output) const
+{
+    output << m_collectedFunctions.size() << " functions collected: \n";
+    for (const auto& func: m_collectedFunctions)
+        output << func << std::endl;
+}
+
